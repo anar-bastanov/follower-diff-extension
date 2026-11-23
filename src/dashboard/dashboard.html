@@ -10,24 +10,21 @@
 </head>
 <body>
   <header class="top">
-    <div class="brand"><span id="logo"></span>Follower Diff</div>
+    <div class="top-left">
+      <div class="brand"><span id="logo"></span>Follower Diff</div>
+      <nav class="top-nav">
+        <button class="nav-item" id="nav-profiles" data-act="nav-profiles"></button>
+        <button class="nav-item" id="nav-settings" data-act="nav-settings"></button>
+      </nav>
+    </div>
     <div class="top-actions">
-      <select id="account" class="select" hidden></select>
       <button id="btn-export" class="btn ghost"></button>
       <button id="btn-import" class="btn ghost"></button>
       <input type="file" id="file-import" accept="application/json,.json" hidden>
     </div>
   </header>
 
-  <div class="layout">
-    <aside class="side">
-      <button class="nav-item" id="nav-changes" data-act="nav-changes"></button>
-      <button class="nav-item" id="nav-settings" data-act="nav-settings"></button>
-      <div class="side-label">Snapshots</div>
-      <ul class="snap-list" id="snap-list"></ul>
-    </aside>
-    <main id="main"></main>
-  </div>
+  <main id="main" class="page"></main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 

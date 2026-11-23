@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Follower Diff",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Keep local snapshots of your Instagram followers and following, and see exactly what changed between them.",
   "homepage_url": "https://github.com/anar-bastanov/follower-diff-extension",
   "icons": {

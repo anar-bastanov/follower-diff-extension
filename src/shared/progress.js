@@ -7,7 +7,6 @@
 
   function render(s) {
     const steps = [
-      { key: 'account', label: 'Reading your profile' },
       { key: 'followers', label: 'Followers', n: s.followers, total: s.expectedFollowers },
       { key: 'following', label: 'Following', n: s.following, total: s.expectedFollowing },
     ];
@@ -19,7 +18,7 @@
       const count = st.n != null && status !== 'pending'
         ? `<span class="fd-count">${fmt(st.n)}${showTotal ? `<span class="fd-of"> / ${fmt(st.total)}</span>` : ''}</span>` : '';
       let bar = '';
-      if (status === 'active' && st.key !== 'account') {
+      if (status === 'active') {
         bar = st.total
           ? `<div class="fd-bar"><div class="fd-fill" style="width:${Math.min(100, ((st.n || 0) / st.total) * 100).toFixed(1)}%"></div></div>`
           : `<div class="fd-bar fd-ind"><div class="fd-fill"></div></div>`;

@@ -11,9 +11,10 @@
   };
 
   class IGError extends Error {
-    constructor(code, message) {
+    constructor(code, message, status = null) {
       super(message);
       this.code = code;
+      this.status = status;
     }
   }
 
@@ -72,7 +73,7 @@
 
     const fail = (code, msg) => {
       console.warn('[Follower Diff]', res.status, url.pathname, text.slice(0, 200));
-      return new IGError(code, msg);
+      return new IGError(code, msg, res.status);
     };
     if (res.status === 429 || /wait a few minutes|try again later/i.test(message)) {
       throw fail('rate_limited', 'Instagram is rate limiting requests.');
@@ -115,31 +116,63 @@
     };
   }
 
-  // Username and counts are nice to have, so this tries once and never fails the scan.
-  async function getMe(signal) {
-    const userId = getCookie('ds_user_id');
-    if (!userId) throw new IGError('auth', 'You are not logged in to Instagram.');
-    const me = { userId, username: null, followerCount: null, followingCount: null };
-    try {
-      const { user } = await get(`/api/v1/users/${userId}/info/`, null, signal);
-      return {
-        ...me,
-        username: user?.username ?? null,
-        followerCount: toNumber(user?.follower_count),
-        followingCount: toNumber(user?.following_count),
-      };
-    } catch (e) {
-      if (e.code === 'aborted' || e.code === 'auth') throw e;
-      return me;
-    }
+  // First path segments that are Instagram pages, not usernames.
+  const NOT_PROFILES = new Set([
+    'about', 'accounts', 'api', 'ar', 'challenge', 'developer', 'direct', 'directory', 'emails',
+    'explore', 'graphql', 'legal', 'nametag', 'oauth', 'p', 'privacy', 'reel', 'reels', 'session',
+    'stories', 'terms', 'topics', 'tv', 'web', 'your_activity',
+  ]);
+
+  function usernameFromPath(pathname) {
+    const first = pathname.split('/')[1] ?? '';
+    return /^[A-Za-z0-9._]{1,30}$/.test(first) && !NOT_PROFILES.has(first.toLowerCase()) ? first : null;
   }
 
-  async function fetchList(userId, kind, { signal, onWait, onProgress, pace = 'normal' } = {}) {
+  // The same lookup Instagram's own profile pages make.
+  async function lookupProfile(username, signal) {
+    let data;
+    try {
+      ({ data } = await get('/api/v1/users/web_profile_info/', { username }, signal));
+    } catch (e) {
+      if (e.status === 404) throw new IGError('not_found', `@${username} doesn't exist or isn't available.`);
+      if (e.code === 'aborted') throw e;
+      throw new IGError(e.code, `Instagram didn't return @${username}'s profile (${e.message})`, e.status);
+    }
+    const user = data?.user;
+    if (!user?.id) throw new IGError('not_found', `@${username} doesn't exist or isn't available.`);
+    return {
+      id: String(user.id),
+      username: user.username,
+      fullName: user.full_name || '',
+      isPrivate: !!user.is_private,
+      isVerified: !!user.is_verified,
+      followedByViewer: !!user.followed_by_viewer,
+      followerCount: toNumber(user.edge_followed_by?.count),
+      followingCount: toNumber(user.edge_follow?.count),
+    };
+  }
+
+  // Asks for the first page of each list. Private accounts you don't follow come back empty
+  // (or refused), which is the only reliable way to know before scanning.
+  async function listsVisible(userId, signal) {
+    for (const kind of ['followers', 'following']) {
+      try {
+        const data = await request(`/api/v1/friendships/${userId}/${kind}/`, { count: 12 }, { signal });
+        if (Array.isArray(data.users) && data.users.length) return true;
+      } catch (e) {
+        if (e.status !== 401 && e.status !== 403) throw e;
+      }
+    }
+    return false;
+  }
+
+  async function fetchList(userId, kind, { signal, onWait, onProgress, pace = 'normal', limit = Infinity } = {}) {
     const delays = PACE[pace] ?? PACE.normal;
     const users = new Map();
+    const rankToken = crypto.randomUUID(); // asks Instagram to keep one ordering across pages
     let cursor = null;
     for (let page = 1; ; page++) {
-      const params = { count: 25, max_id: cursor };
+      const params = { count: 25, max_id: cursor, rank_token: rankToken };
       if (kind === 'followers') params.search_surface = 'follow_list_page';
       const data = await request(`/api/v1/friendships/${userId}/${kind}/`, params, { signal, onWait });
       if (!Array.isArray(data.users)) throw new IGError('http', 'Instagram sent an unexpected response.');
@@ -149,6 +182,7 @@
         if (user) users.set(user.pk, user);
       }
       onProgress?.(users.size);
+      if (users.size > limit) throw new IGError('too_large', `This list has more than ${limit.toLocaleString()} accounts, which is too large to scan.`);
 
       const next = data.next_max_id;
       if (next == null || next === '' || next === cursor || data.users.length === 0) break;
@@ -158,5 +192,5 @@
     return [...users.values()];
   }
 
-  globalThis.FD_IG = { getCookie, sleep, normalizeUser, getMe, fetchList };
+  globalThis.FD_IG = { getCookie, sleep, normalizeUser, usernameFromPath, lookupProfile, listsVisible, fetchList };
 })();
