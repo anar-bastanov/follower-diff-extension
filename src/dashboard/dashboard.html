@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Follower Diff</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <script src="../shared/accents.js"></script>
+  <script src="../shared/theme.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span id="logo"></span>Follower Diff</div>
+    <div class="top-actions">
+      <select id="account" class="select" hidden></select>
+      <button id="btn-export" class="btn ghost"></button>
+      <button id="btn-import" class="btn ghost"></button>
+      <input type="file" id="file-import" accept="application/json,.json" hidden>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="side">
+      <button class="nav-item" id="nav-changes" data-act="nav-changes"></button>
+      <button class="nav-item" id="nav-settings" data-act="nav-settings"></button>
+      <div class="side-label">Snapshots</div>
+      <ul class="snap-list" id="snap-list"></ul>
+    </aside>
+    <main id="main"></main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="../shared/icons.js"></script>
+  <script src="../shared/storage.js"></script>
+  <script src="../shared/diff.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
